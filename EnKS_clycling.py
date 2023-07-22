@@ -140,19 +140,24 @@ def select(phi,w,nens):
 w_all = np.zeros((nens,n_windows))
 #output parameter
 writeFile("phi_guess",phi_g)
-#call Fortran code to run (generate data)
+#call Fortran code to run the QG model in Fortarn (generate data)
 os.system("gfortran -o QG -fdefault-real-8  -fdefault-double-8 -fallow-invalid-boz HFFT.f nagsources.f parameter.f90  random.f90 helm.f90 PV.f90 QGModel.f90 -lBLAS -lLAPACK")
 os.system("QG")
+#read data
 x_r = real_vec(0,t,nxx,nyy,nl)     #real state of the system in vector
 x_en = read_ensemble(nens,0,t,nxx,nyy,nl) #ensemble members
+#perform DA (EnKS)
 x_an,phi_a = EnKS(x_r,x_en,t,nxx,nyy,nl,nens,r,rng,L,Nx,phi_g)
 ini_r,ini = initial(x_r[:,-1],x_an[:,:,-1],nxx,nyy,nl,nens) #obtain initial condition for the next cycle
+#write initials to unformatted file
 writeini(ini_r,ini,nens)
+#convert the parameter
 w_a = transfer(phi_a,nens)
 phi_a,w_a = select(phi_a,w_a,nens)
 w_all[:,0] = w_a
+#write to file
 writeFile("phi_guess",phi_a)
-#cycling
+#cycling for multiple windows
 for i in range(1,n_windows):
     #write the analyzed data at the end of the simulation as the initial
     os.system("gfortran -o QGCycling -fdefault-real-8  -fdefault-double-8 -fallow-invalid-boz HFFT.f nagsources.f parameter.f90  random.f90 helm.f90 PV.f90 QGCycling.f90 -lBLAS -lLAPACK")
